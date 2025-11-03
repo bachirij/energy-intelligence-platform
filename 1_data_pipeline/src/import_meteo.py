@@ -7,7 +7,9 @@ import time
 import random
 import os
 
+
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
+
 
 def get_openmeteo_data(start_date: str, end_date: str, latitude: float = 48.8534, longitude: float = 2.3488) -> pd.DataFrame:
     """
@@ -110,7 +112,7 @@ def get_openmeteo_data(start_date: str, end_date: str, latitude: float = 48.8534
     full_df = pd.concat(all_dfs, ignore_index=True)
     return full_df
 
-# Run the data import and save to CSV
+# ---------------------- MAIN EXECUTION ----------------------
 if __name__ == "__main__":
     # Ensure data directory exists
     os.makedirs("../data", exist_ok=True)

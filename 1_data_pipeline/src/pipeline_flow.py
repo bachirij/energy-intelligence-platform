@@ -1,6 +1,6 @@
 import os
 from import_meteo import get_openmeteo_data
-# from import_entsoe import get_entsoe_data  # future import for ENTSO-E
+from import_entsoe import get_entsoe_load
 
 # -------------------------
 # 1. Define paths
@@ -18,7 +18,7 @@ os.makedirs(DATA_DIR, exist_ok=True)  # create data folder if it doesn't exist
 START_DATE = "2025-01-01"
 END_DATE   = "2025-01-02"
 WEATHER_FILE = os.path.join(DATA_DIR, "weather_jan2025.csv")
-# ENTSOE_FILE = os.path.join(DATA_DIR, "entsoe_jan2025.csv")  # placeholder for ENTSO-E
+ENTSOE_FILE = os.path.join(DATA_DIR, "entsoe_jan2025.csv")  # placeholder for ENTSO-E
 
 # -------------------------
 # 3. Utility functions
@@ -53,9 +53,9 @@ def main():
     df_weather = get_openmeteo_data(START_DATE, END_DATE)
     save_csv(df_weather, WEATHER_FILE)
 
-    # 4b. Fetch ENTSO-E data (to be implemented later)
-    # df_entsoe = get_entsoe_data(START_DATE, END_DATE)
-    # save_csv(df_entsoe, ENTSOE_FILE)
+    # 4b. Fetch ENTSO-E data
+    df_load = get_entsoe_load(START_DATE, END_DATE)
+    save_csv(df_load, ENTSOE_FILE)
 
     print("Pipeline finished successfully!")
 
