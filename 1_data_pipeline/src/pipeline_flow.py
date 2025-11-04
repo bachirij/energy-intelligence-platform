@@ -1,6 +1,7 @@
 import os
 from import_meteo import get_openmeteo_data
 from import_entsoe import get_entsoe_load
+from preprocess import preprocess_all
 
 # -------------------------
 # 1. Define paths
@@ -41,27 +42,15 @@ def save_csv(df, path):
 # 4. Main pipeline
 # -------------------------
 def main():
-    """
-    Main function to run the data pipeline.
-
-    Steps:
-    1. Fetch weather data from Open-Meteo
-    2. Save the weather data as CSV
-    3. (Future) Fetch ENTSO-E data and save as CSV
-    """
-    # 4a. Fetch historical weather data
     df_weather = get_openmeteo_data(START_DATE, END_DATE)
-    save_csv(df_weather, WEATHER_FILE)
-
-    # 4b. Fetch ENTSO-E data
     df_load = get_entsoe_load(START_DATE, END_DATE)
-    save_csv(df_load, ENTSOE_FILE)
 
-    print("Pipeline finished successfully!")
+    df_inputs = preprocess_all(df_weather, df_load)
+    save_csv(df_inputs, os.path.join(DATA_DIR, "preprocessed_inputs.csv"))
 
 # -------------------------
 # 5. Entry point
 # -------------------------
 if __name__ == "__main__":
-    # This allows the script to be run directly from terminal
+    # Allows the script to be run directly from terminal
     main()

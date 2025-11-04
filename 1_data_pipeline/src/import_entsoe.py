@@ -52,7 +52,7 @@ def get_entsoe_load(start_date: str, end_date: str, country_code: str = "10YFR-R
     # Split into yearly chunks (ENTSO-E API limit = 1 year)
     for year_start in pd.date_range(start, end, freq="YS"):
         year_end = min(year_start + pd.DateOffset(years=1) - pd.Timedelta(days=1), end)
-        print(f"Fetching data from {year_start.strftime('%Y-%m-%d')} to {year_end.strftime('%Y-%m-%d')} ...")
+        print(f"Fetching: {year_start.strftime('%Y-%m-%d')} to {year_end.strftime('%Y-%m-%d')} ...")
 
         # Format dates for API (yyyyMMddHHmm)
         period_start = year_start.strftime("%Y%m%d0000")
