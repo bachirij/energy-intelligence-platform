@@ -1,0 +1,6 @@
+openmeteo-requests
+requests-cache retry-requests numpy pandas
+requests pandas lxml
+python-dotenv
+holidays
+sqlalchemy psycopg2-binary
