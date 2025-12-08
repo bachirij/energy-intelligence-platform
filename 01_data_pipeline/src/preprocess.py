@@ -2,9 +2,7 @@ import pandas as pd
 import holidays
 
 
-# -----------------------------
 # 1. Cleaning functions
-# -----------------------------
 def clean_weather_data(df: pd.DataFrame) -> pd.DataFrame:
     """Clean and preprocess weather data."""
     df = df.copy()
@@ -55,9 +53,7 @@ def clean_load_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# -----------------------------
 # 2. Merge function
-# -----------------------------
 def merge_weather_load(df_weather: pd.DataFrame, df_load: pd.DataFrame) -> pd.DataFrame:
     """Merge weather and load data on datetime."""
     df_merged = pd.merge(df_load, df_weather, on="datetime", how="inner")
@@ -69,9 +65,7 @@ def merge_weather_load(df_weather: pd.DataFrame, df_load: pd.DataFrame) -> pd.Da
     return df_merged
 
 
-# -----------------------------
-# 3. Feature engineering
-# -----------------------------
+# 3. Feature engineering functions
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     """Add temporal, calendar, and categorical features."""
     df = df.copy()
@@ -101,9 +95,7 @@ def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# -----------------------------
-# 4. Master preprocessing function
-# -----------------------------
+# 4. Full preprocessing function
 def preprocess_all(df_weather_raw: pd.DataFrame, df_load_raw: pd.DataFrame) -> pd.DataFrame:
     """
     Full preprocessing pipeline:
@@ -119,9 +111,7 @@ def preprocess_all(df_weather_raw: pd.DataFrame, df_load_raw: pd.DataFrame) -> p
     return df_final
 
 
-# -----------------------------
-# 5. Script entry point (manual run)
-# -----------------------------
+# 5. MAIN EXECUTION
 if __name__ == "__main__":
     from import_meteo import get_openmeteo_data
     from import_entsoe import get_entsoe_load
@@ -139,5 +129,5 @@ if __name__ == "__main__":
     df_inputs = preprocess_all(df_weather_raw, df_load_raw)
 
     df_inputs.to_csv("../data/preprocessed_inputs.csv", index=False)
-    print("✅ Preprocessed data saved to '../data/preprocessed_inputs.csv'")
+    print("Preprocessed data saved to '../data/preprocessed_inputs.csv'")
 

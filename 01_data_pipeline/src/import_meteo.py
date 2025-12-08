@@ -112,7 +112,7 @@ def get_openmeteo_data(start_date: str, end_date: str, latitude: float = 48.8534
     full_df = pd.concat(all_dfs, ignore_index=True)
     return full_df
 
-# ---------------------- MAIN EXECUTION ----------------------
+# MAIN EXECUTION
 if __name__ == "__main__":
     # Ensure data directory exists
     os.makedirs("../data", exist_ok=True)
