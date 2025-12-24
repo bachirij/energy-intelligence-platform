@@ -1,6 +1,6 @@
 import os
-from import_meteo import get_openmeteo_data
-from import_entsoe import get_entsoe_load
+from src.ingestion.import_meteo import get_openmeteo_data
+from src.ingestion.import_entsoe import get_entsoe_load
 from preprocess import preprocess_all
 
 

@@ -1,3 +1,4 @@
 .env
 *.cache.sqlite
 .cache.sqlite
+.conda

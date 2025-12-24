@@ -113,8 +113,8 @@ def preprocess_all(df_weather_raw: pd.DataFrame, df_load_raw: pd.DataFrame) -> p
 
 # 5. MAIN EXECUTION
 if __name__ == "__main__":
-    from import_meteo import get_openmeteo_data
-    from import_entsoe import get_entsoe_load
+    from src.ingestion.import_meteo import get_openmeteo_data
+    from src.ingestion.import_entsoe import get_entsoe_load
     import os
 
     START_DATE = "2025-01-01"
