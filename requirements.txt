@@ -1,6 +1,19 @@
+# Core
+numpy
+pandas
+
+# HTTP / APIs
+requests
+requests-cache
+retry-requests
+lxml
+
+# Weather 
 openmeteo-requests
-requests-cache retry-requests numpy pandas
-requests pandas lxml
+
+# Utils
 python-dotenv
 holidays
 
+# Visualization
+matplotlib
