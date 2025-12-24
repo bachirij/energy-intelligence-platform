@@ -2,3 +2,6 @@
 *.cache.sqlite
 .cache.sqlite
 .conda
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
