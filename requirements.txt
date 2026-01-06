@@ -1,6 +1,7 @@
 # Core
 numpy
 pandas
+pyarrow
 
 # HTTP / APIs
 requests
