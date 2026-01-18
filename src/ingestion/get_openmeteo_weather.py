@@ -1,4 +1,17 @@
-import os
+"""
+Open-Meteo Weather Ingestion
+----------------------------
+
+Fetch hourly historical weather data from the Open-Meteo Archive API
+and store it as parquet files partitioned by country and year.
+
+Output directory (always, regardless of where the script is run):
+data/raw/weather/country=XX/year=YYYY/weather.parquet
+
+Existing files are always overwritten.
+"""
+
+from pathlib import Path
 import time
 import random
 import pandas as pd
@@ -7,19 +20,51 @@ from retry_requests import retry
 import openmeteo_requests
 
 
+# ---------------------------------------------------------------------
+# Project paths 
+# ---------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATA_RAW_PATH = PROJECT_ROOT / "data" / "raw" / "weather"
+
 BASE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 
+# ---------------------------------------------------------------------
+# Fetch one full year of weather data
+# ---------------------------------------------------------------------
 def fetch_openmeteo_weather_one_year(
     year: int,
     latitude: float,
     longitude: float
 ) -> pd.DataFrame:
     """
-    Fetch hourly weather data for one year from Open-Meteo.
+    Fetch hourly weather data for one full year from Open-Meteo.
+
+    Parameters
+    ----------
+    year : int
+        Year to fetch (e.g. 2023)
+    latitude : float
+        Latitude of the location
+    longitude : float
+        Longitude of the location
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns:
+        - datetime (UTC)
+        - temperature_2m
+        - relative_humidity_2m
+        - wind_speed_10m
+        - shortwave_radiation_instant
     """
 
-    cache_session = requests_cache.CachedSession(".cache", expire_after=-1)
+    # Setup cached + retry-enabled session
+    cache_session = requests_cache.CachedSession(
+        cache_name=".cache/openmeteo",
+        expire_after=-1
+    )
     retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
     client = openmeteo_requests.Client(session=retry_session)
 
@@ -40,7 +85,7 @@ def fetch_openmeteo_weather_one_year(
     response = responses[0]
     hourly = response.Hourly()
 
-    data = {
+    df = pd.DataFrame({
         "datetime": pd.date_range(
             start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
             end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
@@ -51,43 +96,63 @@ def fetch_openmeteo_weather_one_year(
         "relative_humidity_2m": hourly.Variables(1).ValuesAsNumpy(),
         "wind_speed_10m": hourly.Variables(2).ValuesAsNumpy(),
         "shortwave_radiation_instant": hourly.Variables(3).ValuesAsNumpy()
-    }
+    })
 
-    return pd.DataFrame(data)
+    if df.empty:
+        raise ValueError("Open-Meteo returned an empty dataset")
+
+    df = (
+        df.sort_values("datetime")
+          .drop_duplicates(subset=["datetime"])
+          .reset_index(drop=True)
+    )
+
+    return df
 
 
+# ---------------------------------------------------------------------
+# Fetch and store 
+# ---------------------------------------------------------------------
 def fetch_openmeteo_weather_and_store(
     country: str,
     latitude: float,
     longitude: float,
     start_year: int,
-    end_year: int,
-    base_path: str = "data/raw/weather"
+    end_year: int
 ):
     """
     Fetch and store Open-Meteo weather data as parquet files
     partitioned by country and year.
+    Files are always overwritten.
     """
 
     for year in range(start_year, end_year + 1):
 
-        output_dir = f"{base_path}/country={country}/year={year}"
-        output_path = f"{output_dir}/weather.parquet"
-        os.makedirs(output_dir, exist_ok=True)
+        output_dir = (
+            DATA_RAW_PATH
+            / f"country={country}"
+            / f"year={year}"
+        )
+        output_path = output_dir / "weather.parquet"
 
-        if os.path.exists(output_path):
-            print(f"[SKIP] {country} {year} already exists")
-            continue
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"[FETCH] Weather | {country} | {year}")
+        print(f"[FETCH] Open-Meteo weather | {country} | {year}")
 
         try:
-            df = fetch_openmeteo_weather_one_year(year, latitude, longitude)
+            df = fetch_openmeteo_weather_one_year(
+                year=year,
+                latitude=latitude,
+                longitude=longitude
+            )
+
             df["country"] = country
-            df = df.sort_values("datetime")
 
             df.to_parquet(output_path, index=False)
-            print(f"[SAVED] {output_path}")
+
+            print(
+                f"[SAVED] {output_path} | rows={len(df)}"
+            )
 
         except Exception as e:
             print(f"[ERROR] {country} {year} → {e}")
@@ -95,6 +160,9 @@ def fetch_openmeteo_weather_and_store(
         time.sleep(random.uniform(0.2, 0.5))
 
 
+# ---------------------------------------------------------------------
+# CLI execution
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     fetch_openmeteo_weather_and_store(
         country="FR",
