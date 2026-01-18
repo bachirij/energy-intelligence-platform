@@ -8,7 +8,7 @@ and store it as parquet files partitioned by country and year.
 Output directory (always, regardless of where the script is run):
 data/raw/weather/country=XX/year=YYYY/weather.parquet
 
-Existing files are always overwritten.
+Existing files are always overwritten (for the moment).
 """
 
 from pathlib import Path
@@ -161,7 +161,7 @@ def fetch_openmeteo_weather_and_store(
 
 
 # ---------------------------------------------------------------------
-# CLI execution
+# Command line execution
 # ---------------------------------------------------------------------
 if __name__ == "__main__":
     fetch_openmeteo_weather_and_store(

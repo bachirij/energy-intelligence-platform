@@ -1,108 +1,112 @@
-import os
 import pandas as pd
+from pathlib import Path
 
 
-RAW_BASE_PATH = "data/raw"
-PROCESSED_BASE_PATH = "data/processed"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAW_BASE_PATH = PROJECT_ROOT / "data" / "raw"
+PROCESSED_BASE_PATH = PROJECT_ROOT / "data" / "processed"
 
 
-def check_hourly_continuity(df: pd.DataFrame, time_col: str) -> pd.DatetimeIndex:
-    """
-    Build a complete hourly datetime index between min and max timestamps.
-    """
+# ---------------------------------------------------------------------
+# Build full hourly datetime index
+# ---------------------------------------------------------------------
+def build_full_hourly_index(df: pd.DataFrame, time_col: str) -> pd.DatetimeIndex:
     return pd.date_range(
         start=df[time_col].min(),
         end=df[time_col].max(),
-        freq="h",
-        tz="UTC"
+        freq="h"
     )
 
-
-def interpolate_time_series(
+# ---------------------------------------------------------------------
+# Reindex and interpolate time series data
+# ---------------------------------------------------------------------
+def reindex_and_interpolate_ts(
     df: pd.DataFrame,
-    value_cols: list[str],
-    limit: int = 3
+    time_col: str,
+    numeric_cols: list[str],
+    categorical_cols: list[str] | None = None,
 ) -> pd.DataFrame:
-    """
-    Time-based linear interpolation with safety limit.
-    """
-    df[value_cols] = df[value_cols].interpolate(
-        method="time",
-        limit=limit,
-        limit_direction="both"
+
+    df = (
+        df
+        .drop_duplicates(subset=time_col)
+        .sort_values(time_col)
+        .copy()
     )
+
+    df[time_col] = pd.to_datetime(df[time_col])
+
+    full_index = build_full_hourly_index(df, time_col)
+
+    df = (
+        df
+        .set_index(time_col)
+        .reindex(full_index)
+    )
+
+    df[numeric_cols] = (
+        df[numeric_cols]
+        .interpolate(method="time", limit_area="inside")
+    )
+
+    if categorical_cols:
+        df[categorical_cols] = (
+            df[categorical_cols]
+            .ffill()
+            .bfill()
+        )
+
+    df = (
+        df
+        .rename_axis(time_col)
+        .reset_index()
+    )
+
+    assert df[time_col].is_monotonic_increasing
+
     return df
 
-
-def build_processed_dataset_for_country_year(
-    country: str,
-    year: int
-):
-    """
-    Build processed dataset (load + weather) for one country and one year.
-    """
+# ---------------------------------------------------------------------
+# Build processed dataset
+# ---------------------------------------------------------------------
+def build_processed_dataset_for_country_year(country: str, year: int):
 
     demand_path = (
-        f"{RAW_BASE_PATH}/electricity_demand/"
-        f"country={country}/year={year}/demand.parquet"
+        RAW_BASE_PATH
+        / "electricity_demand"
+        / f"country={country}"
+        / f"year={year}"
+        / "demand.parquet"
     )
 
     weather_path = (
-        f"{RAW_BASE_PATH}/weather/"
-        f"country={country}/year={year}/weather.parquet"
+        RAW_BASE_PATH
+        / "weather"
+        / f"country={country}"
+        / f"year={year}"
+        / "weather.parquet"
     )
 
-    if not os.path.exists(demand_path) or not os.path.exists(weather_path):
+    if not demand_path.exists() or not weather_path.exists():
         print(f"[SKIP] Missing raw data for {country} {year}")
+        print(f"  Demand path : {demand_path}")
+        print(f"  Weather path: {weather_path}")
         return
 
     print(f"[PROCESS] {country} {year}")
 
-    # ------------------------------------------------------------------
-    # Load raw data
-    # ------------------------------------------------------------------
     df_demand = pd.read_parquet(demand_path)
     df_weather = pd.read_parquet(weather_path)
 
-    # ------------------------------------------------------------------
-    # Basic checks
-    # ------------------------------------------------------------------
-    for df, name in [(df_demand, "demand"), (df_weather, "weather")]:
-        if df["datetime"].dt.tz is None:
-            raise ValueError(f"{name} datetime is not timezone-aware")
-
-        if df["datetime"].dt.tz.zone != "UTC":
-            raise ValueError(f"{name} datetime is not UTC")
-
-        if df["datetime"].duplicated().any():
-            raise ValueError(f"{name} contains duplicate timestamps")
-
-    # ------------------------------------------------------------------
-    # Reindex to full hourly timeline
-    # ------------------------------------------------------------------
-    full_index = check_hourly_continuity(df_demand, "datetime")
-
-    df_demand = (
-        df_demand
-        .set_index("datetime")
-        .reindex(full_index)
+    # ---------------- Demand ----------------
+    df_demand = reindex_and_interpolate_ts(
+        df=df_demand,
+        time_col="datetime",
+        numeric_cols=["load_MW"],
+        categorical_cols=["country"]
     )
 
-    df_weather = (
-        df_weather
-        .set_index("datetime")
-        .reindex(full_index)
-    )
-
-    # ------------------------------------------------------------------
-    # Interpolation
-    # ------------------------------------------------------------------
-    df_demand = interpolate_time_series(
-        df_demand,
-        value_cols=["load_MW"],
-        limit=3
-    )
-
+    # ---------------- Weather ----------------
     weather_cols = [
         "temperature_2m",
         "relative_humidity_2m",
@@ -110,62 +114,50 @@ def build_processed_dataset_for_country_year(
         "shortwave_radiation_instant"
     ]
 
-    df_weather = interpolate_time_series(
+    df_weather = reindex_and_interpolate_ts(
+        df=df_weather,
+        time_col="datetime",
+        numeric_cols=weather_cols
+    )
+
+    # Weather: drop redundant metadata (single-country pipeline)
+    df_weather = df_weather.drop(columns=["country"], errors="ignore")
+
+    # ---------------- Merge ----------------
+    df_processed = df_demand.merge(
         df_weather,
-        value_cols=weather_cols,
-        limit=3
+        on="datetime",
+        how="inner"
     )
 
-    # ------------------------------------------------------------------
-    # Merge
-    # ------------------------------------------------------------------
-    df_processed = df_demand.join(df_weather, how="inner")
-
-    # Restore columns
-    df_processed = df_processed.reset_index().rename(
-        columns={"index": "datetime"}
-    )
-    df_processed["country"] = country
     df_processed["year"] = year
 
-    # ------------------------------------------------------------------
-    # Final quality checks
-    # ------------------------------------------------------------------
-    missing_ratio = df_processed.isna().mean()
+    # ---------------- Final checks ----------------
+    assert df_processed.isna().sum().sum() == 0
+    assert df_processed["country"].nunique() == 1
 
-    if (missing_ratio > 0).any():
-        print(
-            f"[WARNING] Remaining NaNs for {country} {year}:\n"
-            f"{missing_ratio[missing_ratio > 0]}"
-        )
-
-    # ------------------------------------------------------------------
-    # Save processed data
-    # ------------------------------------------------------------------
+    # ---------------- Save ----------------
     output_dir = (
-        f"{PROCESSED_BASE_PATH}/"
-        f"country={country}/year={year}"
+        PROCESSED_BASE_PATH
+        / f"country={country}"
+        / f"year={year}"
     )
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    output_path = f"{output_dir}/load_weather.parquet"
+    output_path = output_dir / "load_weather.parquet"
     df_processed.to_parquet(output_path, index=False)
 
     print(f"[SAVED] {output_path}")
 
 
-def build_processed_dataset(
-    countries: list[str],
-    years: list[int]
-):
-    """
-    Build processed datasets for multiple countries and years.
-    """
+def build_processed_dataset(countries: list[str], years: list[int]):
     for country in countries:
         for year in years:
             build_processed_dataset_for_country_year(country, year)
 
-
+# ---------------------------------------------------------------------
+# Command line execution
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     build_processed_dataset(
         countries=["FR"],

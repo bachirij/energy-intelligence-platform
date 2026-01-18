@@ -8,7 +8,7 @@ and store it as parquet files partitioned by country and year.
 Output directory (always, regardless of where the script is run):
 data/raw/electricity_demand/country=XX/year=YYYY/demand.parquet
 
-Existing files are always overwritten.
+Existing files are always overwritten (for the moment).
 """
 
 from pathlib import Path
@@ -157,7 +157,7 @@ def fetch_entsoe_demand_and_store(
 
 
 # ---------------------------------------------------------------------
-# CLI execution
+# Command line execution
 # ---------------------------------------------------------------------
 if __name__ == "__main__":
     fetch_entsoe_demand_and_store(
