@@ -1,3 +1,16 @@
+"""
+Builds hourly, clean, and ML-ready datasets by preprocessing and merging
+electricity demand and weather time series data.
+
+For each country and year, the module:
+- Loads raw Parquet datasets
+- Reindexes data on a full hourly datetime index
+- Interpolates missing numeric values
+- Merges demand and weather features
+- Applies basic data quality checks
+- Saves the processed dataset to data/processed
+"""
+
 import pandas as pd
 from pathlib import Path
 
@@ -161,5 +174,5 @@ def build_processed_dataset(countries: list[str], years: list[int]):
 if __name__ == "__main__":
     build_processed_dataset(
         countries=["FR"],
-        years=[2023]
+        years=[2024]
     )
