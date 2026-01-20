@@ -168,6 +168,6 @@ if __name__ == "__main__":
         country="FR",
         latitude=48.8534,
         longitude=2.3488,
-        start_year=2023,
+        start_year=2022,
         end_year=2024
     )

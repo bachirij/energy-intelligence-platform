@@ -163,6 +163,6 @@ if __name__ == "__main__":
     fetch_entsoe_demand_and_store(
         country="FR",
         country_code="10YFR-RTE------C",
-        start_year=2023,
+        start_year=2022,
         end_year=2024
     )
