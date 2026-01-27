@@ -174,5 +174,5 @@ def build_processed_dataset(countries: list[str], years: list[int]):
 if __name__ == "__main__":
     build_processed_dataset(
         countries=["FR"],
-        years=[2022, 2023, 2024]
+        years=[2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
     )

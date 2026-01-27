@@ -118,6 +118,7 @@ def build_load_forecasting_features(
     df = df.rename(columns = {"load_MW": "load_t", "temperature_2m": "temperature_t"})
 
     feature_cols = [
+        "datetime",
         "load_t",
         "load_t-1",
         "load_t-24",
@@ -131,13 +132,7 @@ def build_load_forecasting_features(
     target_col = f"target_load_t+{forecast_horizon}"
 
     # Final dataset for modeling
-    df_model = (
-        df
-        .assign(datetime=df["datetime"]) # Ensure datetime column is present as index
-        .set_index("datetime")[feature_cols + [target_col]] # Select features and target
-        .dropna() # Drop rows with missing values
-        .copy()
-    )
+    df_model = df[feature_cols + [target_col]].dropna().copy()
 
     # ------------------------------------------------------------
     # Final sanity checks
@@ -148,13 +143,10 @@ def build_load_forecasting_features(
     if not df_model.index.is_monotonic_increasing:
         raise ValueError("Datetime index is not monotonic")
     
-    if not df_model.index.is_unique:
-        raise ValueError("Datetime index is not unique")
-
     # ------------------------------------------------------------
     # Save features partitioned by year
     # ------------------------------------------------------------
-    for year, df_year in df_model.groupby(df_model.index.year):
+    for year, df_year in df_model.groupby(df_model["datetime"].dt.year):
 
         output_dir = (
             PROCESSED_BASE_PATH
@@ -176,6 +168,6 @@ if __name__ == "__main__":
 
     build_load_forecasting_features(
         country="FR",
-        years=list(range(2012, 2026)),
+        years=list(range(2015, 2024+1)),
         forecast_horizon=1,
     )
