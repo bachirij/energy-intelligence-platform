@@ -26,7 +26,7 @@ from typing import List
 # ---------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROCESSED_BASE_PATH = PROJECT_ROOT / "data" / "processed"
-
+FEATURED_BASE_PATH = PROJECT_ROOT / "data" / "featured"
 
 # ---------------------------------------------------------------------
 # Core feature engineering function
@@ -149,7 +149,7 @@ def build_load_forecasting_features(
     for year, df_year in df_model.groupby(df_model["datetime"].dt.year):
 
         output_dir = (
-            PROCESSED_BASE_PATH
+            FEATURED_BASE_PATH
             / f"country={country}"
             / f"year={year}"
         )
