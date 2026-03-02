@@ -18,3 +18,7 @@ holidays
 
 # Visualization
 matplotlib
+
+# Models
+scikit-learn
+xgboost

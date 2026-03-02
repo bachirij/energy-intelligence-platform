@@ -26,6 +26,7 @@ import os
 # Project paths 
 # ---------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 DATA_RAW_PATH = PROJECT_ROOT / "data" / "raw" / "electricity_demand"
 
 BASE_URL = "https://web-api.tp.entsoe.eu/api"
@@ -126,14 +127,18 @@ def fetch_entsoe_demand_and_store(
 
     for year in range(start_year, end_year + 1):
 
-        output_dir = (
+        # dossier partitionné
+        output_folder = (
             DATA_RAW_PATH
             / f"country={country}"
             / f"year={year}"
         )
-        output_path = output_dir / "demand.parquet"
 
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # création du dossier si nécessaire
+        output_folder.mkdir(parents=True, exist_ok=True)
+
+        # fichier final
+        output_file = output_folder / "demand.parquet"
 
         print(f"[FETCH] ENTSO-E demand | {country} | {year}")
 
@@ -146,9 +151,9 @@ def fetch_entsoe_demand_and_store(
 
             df["country"] = country
 
-            df.to_parquet(output_path, index=False)
+            df.to_parquet(output_file, index=False)
 
-            print(f"[SAVED] {output_path} | rows={len(df)}")
+            print(f"[SAVED] {output_file} | rows={len(df)}")
 
         except Exception as e:
             print(f"[ERROR] {country} {year} → {e}")

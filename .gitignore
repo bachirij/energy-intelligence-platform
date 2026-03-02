@@ -6,4 +6,7 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .cache/
+energy_intelligence_platform.egg-info
+
+
 
