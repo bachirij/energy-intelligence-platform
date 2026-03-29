@@ -8,6 +8,8 @@ requests
 requests-cache
 retry-requests
 lxml
+fastapi
+uvicorn
 
 # Scheduling
 apscheduler
