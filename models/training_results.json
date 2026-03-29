@@ -1,0 +1,40 @@
+{
+  "best_model": "xgboost",
+  "feature_cols": [
+    "load_t",
+    "load_t-1",
+    "load_t-24",
+    "load_t-168",
+    "temperature_t",
+    "hour",
+    "is_weekday",
+    "week_of_year"
+  ],
+  "target_col": "target_load_t+1",
+  "train_end": "2022-12-31 23:00:00+00:00",
+  "val_end": "2023-12-31 23:00:00+00:00",
+  "metrics": {
+    "ridge": {
+      "val": {
+        "mae": 1110.29,
+        "rmse": 1461.94
+      }
+    },
+    "xgboost": {
+      "val": {
+        "mae": 701.71,
+        "rmse": 963.67
+      },
+      "test": {
+        "mae": 594.78,
+        "rmse": 894.64
+      }
+    },
+    "lightgbm": {
+      "val": {
+        "mae": 722.39,
+        "rmse": 980.54
+      }
+    }
+  }
+}
