@@ -101,6 +101,10 @@ def build_load_forecasting_features(
         lambda x: 1 if x.date() in country_holidays else 0
     )
 
+    # df["is_holiday"] = df["datetime"].dt.tz_convert("Europe/Paris").apply(
+        # lambda x: 1 if x.date() in country_holidays else 0
+    # )
+
     # Holidays override weekday flag
     df.loc[df["is_holiday"] == 1, "is_weekday"] = 0
 
@@ -139,8 +143,8 @@ def build_load_forecasting_features(
     # ------------------------------------------------------------
     if df_model.isna().sum().sum() != 0:
         raise ValueError("NaNs detected after feature engineering")
-
-    if not df_model.index.is_monotonic_increasing:
+    
+    if not df_model["datetime"].is_monotonic_increasing:
         raise ValueError("Datetime index is not monotonic")
     
     # ------------------------------------------------------------
