@@ -9,6 +9,9 @@ requests-cache
 retry-requests
 lxml
 
+# Scheduling
+apscheduler
+
 # Weather 
 openmeteo-requests
 
