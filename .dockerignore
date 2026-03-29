@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------
+# .dockerignore — files excluded from the Docker image
+# ---------------------------------------------------------------
+# Same principle as .gitignore — keeps the image lightweight
+# and avoids copying sensitive or unnecessary files.
+# ---------------------------------------------------------------
+
+# Raw and processed data (heavy, not needed to serve predictions)
+data/
+
+# Notebooks (exploration only, not needed in production)
+notebooks/
+
+# Environment and secrets
+.env
+.env.*
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Cache files
+.cache/
+
+# Git
+.git/
+.gitignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Scheduler (not needed in the API container)
+scheduler.py
