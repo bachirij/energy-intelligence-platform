@@ -6,7 +6,7 @@ Single entry point to run all or part of the data pipeline.
 
 Usage:
 ------
-# Run all steps over all years
+# Run all steps (ingest → preprocess → features → train)
     python main.py
 
 # Run all steps over a specific year range
@@ -17,6 +17,12 @@ Usage:
 
 # Run preprocessing and feature engineering only
     python main.py --steps preprocess features
+
+# Train models only
+    python main.py --steps train
+
+# Run one real-time ingestion cycle manually
+    python main.py --steps realtime
 
 # Display help
     python main.py --help
@@ -40,7 +46,11 @@ COUNTRIES = {
     }
 }
 
-ALL_STEPS = ["ingest", "preprocess", "features"]
+# Steps that require --start-year / --end-year
+YEAR_DEPENDENT_STEPS = ["ingest", "preprocess", "features"]
+
+# All available steps
+ALL_STEPS = ["ingest", "preprocess", "features", "train", "realtime"]
 
 DEFAULT_COUNTRY = "FR"
 DEFAULT_START_YEAR = 2015
@@ -60,14 +70,18 @@ def import_modules():
     try:
         from src.ingestion.get_entsoe_demand import fetch_entsoe_demand_and_store
         from src.ingestion.get_openmeteo_weather import fetch_openmeteo_weather_and_store
+        from src.ingestion.get_realtime_data import fetch_and_store_realtime
         from src.preprocessing.build_preprocessed_dataset import build_processed_dataset
         from src.feature_engineering.build_features import build_load_forecasting_features
-        return (
-            fetch_entsoe_demand_and_store,
-            fetch_openmeteo_weather_and_store,
-            build_processed_dataset,
-            build_load_forecasting_features,
-        )
+        from src.modeling.train import run_training
+        return {
+            "fetch_entsoe_demand_and_store": fetch_entsoe_demand_and_store,
+            "fetch_openmeteo_weather_and_store": fetch_openmeteo_weather_and_store,
+            "fetch_and_store_realtime": fetch_and_store_realtime,
+            "build_processed_dataset": build_processed_dataset,
+            "build_load_forecasting_features": build_load_forecasting_features,
+            "run_training": run_training,
+        }
     except ImportError as e:
         print(f"\n[ERROR] Failed to import a module: {e}")
         print("-> Make sure you run main.py from the project root.")
@@ -79,14 +93,13 @@ def import_modules():
 # Pipeline steps
 # ---------------------------------------------------------------------
 
-def step_ingest(country: str, start_year: int, end_year: int, modules: tuple):
+def step_ingest(country: str, start_year: int, end_year: int, modules: dict):
     """Step 1: Raw data ingestion (ENTSO-E + Open-Meteo)."""
 
-    fetch_entsoe_demand_and_store, fetch_openmeteo_weather_and_store, _, _ = modules
     meta = COUNTRIES[country]
 
     print("\n--- ENTSO-E ingestion (electricity demand) ---")
-    fetch_entsoe_demand_and_store(
+    modules["fetch_entsoe_demand_and_store"](
         country=country,
         country_code=meta["entsoe_code"],
         start_year=start_year,
@@ -94,7 +107,7 @@ def step_ingest(country: str, start_year: int, end_year: int, modules: tuple):
     )
 
     print("\n--- Open-Meteo ingestion (weather) ---")
-    fetch_openmeteo_weather_and_store(
+    modules["fetch_openmeteo_weather_and_store"](
         country=country,
         latitude=meta["latitude"],
         longitude=meta["longitude"],
@@ -103,30 +116,59 @@ def step_ingest(country: str, start_year: int, end_year: int, modules: tuple):
     )
 
 
-def step_preprocess(country: str, start_year: int, end_year: int, modules: tuple):
+def step_preprocess(country: str, start_year: int, end_year: int, modules: dict):
     """Step 2: Preprocessing and merging of raw data."""
 
-    _, _, build_processed_dataset, _ = modules
     years = list(range(start_year, end_year + 1))
 
     print("\n--- Preprocessing and merging demand + weather ---")
-    build_processed_dataset(
+    modules["build_processed_dataset"](
         countries=[country],
         years=years,
     )
 
 
-def step_features(country: str, start_year: int, end_year: int, modules: tuple):
+def step_features(country: str, start_year: int, end_year: int, modules: dict):
     """Step 3: Feature engineering for h+1 forecasting."""
 
-    _, _, _, build_load_forecasting_features = modules
     years = list(range(start_year, end_year + 1))
 
     print("\n--- Feature engineering (lag features, calendar, weather) ---")
-    build_load_forecasting_features(
+    modules["build_load_forecasting_features"](
         country=country,
         years=years,
         forecast_horizon=1,
+    )
+
+
+def step_train(country: str, start_year: int, end_year: int, modules: dict):
+    """Step 4: Train and compare models, save the best one."""
+
+    years = list(range(start_year, end_year + 1))
+
+    print("\n--- Model training (Ridge vs XGBoost vs LightGBM) ---")
+    modules["run_training"](
+        country=country,
+        years=years,
+    )
+
+
+def step_realtime(country: str, start_year: int, end_year: int, modules: dict):
+    """
+    Step 5: One real-time ingestion cycle (fetch latest data + store).
+
+    Note: start_year / end_year are ignored for this step.
+    For automated hourly execution, use scheduler.py instead.
+    """
+
+    meta = COUNTRIES[country]
+
+    print("\n--- Real-time ingestion (last 48h demand + weather forecast) ---")
+    modules["fetch_and_store_realtime"](
+        country=country,
+        country_code=meta["entsoe_code"],
+        latitude=meta["latitude"],
+        longitude=meta["longitude"],
     )
 
 
@@ -141,18 +183,18 @@ def run_pipeline(steps: list, country: str, start_year: int, end_year: int):
     Parameters
     ----------
     steps : list[str]
-        List of steps to run, subset of ["ingest", "preprocess", "features"]
+        List of steps to run
     country : str
         Country code (e.g. "FR")
     start_year : int
-        First year to process
+        First year to process (used by ingest, preprocess, features, train)
     end_year : int
-        Last year to process (inclusive)
+        Last year to process inclusive (same as above)
     """
 
     # Parameter validation
     if country not in COUNTRIES:
-        print(f"[ERROR] Country '{country}' is not supported. Available countries: {list(COUNTRIES.keys())}")
+        print(f"[ERROR] Country '{country}' is not supported. Available: {list(COUNTRIES.keys())}")
         sys.exit(1)
 
     if start_year > end_year:
@@ -176,9 +218,11 @@ def run_pipeline(steps: list, country: str, start_year: int, end_year: int):
 
     # Map step names to their functions
     step_functions = {
-        "ingest": step_ingest,
+        "ingest":     step_ingest,
         "preprocess": step_preprocess,
-        "features": step_features,
+        "features":   step_features,
+        "train":      step_train,
+        "realtime":   step_realtime,
     }
 
     for i, step_name in enumerate(steps, start=1):
@@ -215,12 +259,14 @@ def parse_args():
         description="energy-intelligence-platform -- Electricity demand forecasting pipeline",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
-        Examples:
-        python main.py
-        python main.py --start-year 2023 --end-year 2024
-        python main.py --steps ingest
-        python main.py --steps preprocess features
-        python main.py --steps all --country FR --start-year 2015 --end-year 2024
+Examples:
+  python main.py
+  python main.py --start-year 2023 --end-year 2024
+  python main.py --steps ingest
+  python main.py --steps preprocess features
+  python main.py --steps train
+  python main.py --steps realtime
+  python main.py --steps all --country FR --start-year 2015 --end-year 2024
         """
     )
 
@@ -235,6 +281,8 @@ def parse_args():
             "  ingest      -> Fetch raw data (ENTSO-E + Open-Meteo)\n"
             "  preprocess  -> Clean and merge demand + weather\n"
             "  features    -> Feature engineering for h+1 forecasting\n"
+            "  train       -> Train and compare models, save best\n"
+            "  realtime    -> One real-time ingestion cycle (manual trigger)\n"
             "  all         -> Run all steps (default)\n"
         )
     )
@@ -272,7 +320,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    # If "all" is in steps, replace with the full list
+    # If "all" is in steps, replace with the full ordered list
     steps = ALL_STEPS if "all" in args.steps else args.steps
 
     run_pipeline(
