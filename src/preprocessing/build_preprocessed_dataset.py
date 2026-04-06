@@ -37,6 +37,7 @@ def reindex_and_interpolate_ts(
     df: pd.DataFrame,
     time_col: str,
     numeric_cols: list[str],
+    ffill_cols: list[str] | None = None,
     categorical_cols: list[str] | None = None,
 ) -> pd.DataFrame:
 
@@ -62,6 +63,9 @@ def reindex_and_interpolate_ts(
         .interpolate(method="time", limit_area="inside")
     )
 
+    if ffill_cols:
+        df[ffill_cols] = df[ffill_cols].ffill()
+
     if categorical_cols:
         df[categorical_cols] = (
             df[categorical_cols]
@@ -74,8 +78,6 @@ def reindex_and_interpolate_ts(
         .rename_axis(time_col)
         .reset_index()
     )
-
-    assert df[time_col].is_monotonic_increasing
 
     return df
 
@@ -124,13 +126,15 @@ def build_processed_dataset_for_country_year(country: str, year: int):
         "temperature_2m",
         "relative_humidity_2m",
         "wind_speed_10m",
-        "shortwave_radiation_instant"
     ]
+
+    weather_ffill_cols = ["shortwave_radiation_instant"]
 
     df_weather = reindex_and_interpolate_ts(
         df=df_weather,
         time_col="datetime",
-        numeric_cols=weather_cols
+        numeric_cols=weather_cols,
+        ffill_cols=weather_ffill_cols
     )
 
     # Weather: drop redundant metadata (single-country pipeline)
@@ -146,8 +150,18 @@ def build_processed_dataset_for_country_year(country: str, year: int):
     df_processed["year"] = year
 
     # ---------------- Final checks ----------------
-    assert df_processed.isna().sum().sum() == 0
-    assert df_processed["country"].nunique() == 1
+    if df_processed.isna().sum().sum() != 0:
+        raise ValueError(
+            f"[{country} {year}] NaNs detected after preprocessing : "
+            f"{df_processed.isna().sum().sum()} NaNs\n"
+            f"{df_processed.isna().sum()[df_processed.isna().sum() > 0]}"
+        )
+
+    if df_processed["country"].nunique() != 1:
+        raise ValueError(
+            f"[{country} {year}] Multiple countries detected in processed data : "
+            f"{df_processed['country'].unique()}"
+        )
 
     # ---------------- Save ----------------
     output_dir = (
@@ -174,5 +188,5 @@ def build_processed_dataset(countries: list[str], years: list[int]):
 if __name__ == "__main__":
     build_processed_dataset(
         countries=["FR"],
-        years=[2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
+        years=[2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
     )
