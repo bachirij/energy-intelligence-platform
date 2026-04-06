@@ -97,13 +97,9 @@ def build_load_forecasting_features(
     # ------------------------------------------------------------
     country_holidays = holidays.country_holidays(country)
 
-    df["is_holiday"] = df["datetime"].apply(
+    df["is_holiday"] = df["datetime"].dt.tz_convert("Europe/Paris").apply(
         lambda x: 1 if x.date() in country_holidays else 0
     )
-
-    # df["is_holiday"] = df["datetime"].dt.tz_convert("Europe/Paris").apply(
-        # lambda x: 1 if x.date() in country_holidays else 0
-    # )
 
     # Holidays override weekday flag
     df.loc[df["is_holiday"] == 1, "is_weekday"] = 0
@@ -114,6 +110,7 @@ def build_load_forecasting_features(
     df["load_t-1"] = df["load_MW"].shift(1)
     df["load_t-24"] = df["load_MW"].shift(24)
     df["load_t-168"] = df["load_MW"].shift(24 * 7)
+    df["temperature_t-24"] = df["temperature_2m"].shift(24)
 
     # ------------------------------------------------------------
     # Feature selection
@@ -128,8 +125,10 @@ def build_load_forecasting_features(
         "load_t-24",
         "load_t-168",
         "temperature_t",
+        "temperature_t-24",
         "hour",
         "is_weekday",
+        "day_of_week",
         "week_of_year",
     ]
 
@@ -160,6 +159,11 @@ def build_load_forecasting_features(
         output_dir.mkdir(parents=True, exist_ok=True)
 
         output_path = output_dir / "load_forecasting_features.parquet"
+
+        if output_path.exists():
+            print(f"[SKIP] {output_path}")
+            continue
+
         df_year.to_parquet(output_path, index=False)
 
         print(f"[SAVED] {output_path} | rows={len(df_year)}")
