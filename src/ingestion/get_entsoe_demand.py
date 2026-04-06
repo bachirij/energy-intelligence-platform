@@ -127,19 +127,25 @@ def fetch_entsoe_demand_and_store(
 
     for year in range(start_year, end_year + 1):
 
-        # dossier partitionné
+        # Partioned output folder
         output_folder = (
             DATA_RAW_PATH
             / f"country={country}"
             / f"year={year}"
         )
 
-        # création du dossier si nécessaire
+        # Create folder if it doesn't exist (no error if it already exists)
         output_folder.mkdir(parents=True, exist_ok=True)
 
-        # fichier final
+        # Final output file path
         output_file = output_folder / "demand.parquet"
 
+        # If the file already exists, we skip fetching 
+        if output_file.exists():
+            print(f"[SKIP] {output_file} already exists")
+            continue
+
+        # If we reach this point, it means we need to fetch the data
         print(f"[FETCH] ENTSO-E demand | {country} | {year}")
 
         try:
@@ -169,5 +175,5 @@ if __name__ == "__main__":
         country="FR",
         country_code="10YFR-RTE------C",
         start_year=2015,
-        end_year=2024
+        end_year=2025
     )

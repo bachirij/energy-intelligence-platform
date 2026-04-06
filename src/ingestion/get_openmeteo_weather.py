@@ -133,9 +133,17 @@ def fetch_openmeteo_weather_and_store(
             / f"country={country}"
             / f"year={year}"
         )
+
+        # Create folder if it doesn't exist (no error if it already exists)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Final output file path
         output_path = output_dir / "weather.parquet"
 
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # If the file already exists, we skip fetching 
+        if output_path.exists():
+            print(f"[SKIP] {output_path} already exists")
+            continue
 
         print(f"[FETCH] Open-Meteo weather | {country} | {year}")
 
