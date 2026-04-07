@@ -51,7 +51,7 @@ ROLLING_WINDOW_HOURS = 24 * 7  # 7 days
 def fetch_entsoe_realtime(
     country_code: str,
     api_token: str,
-    lookback_hours: int = 48,
+    lookback_hours: int = 168,
 ) -> pd.DataFrame:
     """
     Fetch actual electricity demand from ENTSO-E for the last N hours.
@@ -345,11 +345,11 @@ def fetch_and_store_realtime(
     print(f"\n[REALTIME] Starting real-time ingestion | country={country}")
     print(f"[REALTIME] Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
 
-    # Step 1 — ENTSO-E demand (last 48h)
+    # Step 1 — ENTSO-E demand (last 168h)
     df_demand = fetch_entsoe_realtime(
         country_code=country_code,
         api_token=api_token,
-        lookback_hours=48,
+        lookback_hours=168,
     )
 
     # Step 2 — Open-Meteo forecast (next 2h)
