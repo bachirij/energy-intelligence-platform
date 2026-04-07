@@ -176,6 +176,6 @@ if __name__ == "__main__":
 
     build_load_forecasting_features(
         country="FR",
-        years=list(range(2015, 2024+1)),
+        years=list(range(2015, 2025+1)),
         forecast_horizon=1,
     )

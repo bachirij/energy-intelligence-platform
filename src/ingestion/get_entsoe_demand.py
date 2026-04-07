@@ -96,12 +96,30 @@ def fetch_entsoe_demand_one_year(
 
     if df.empty:
         raise ValueError("ENTSO-E returned an empty dataset")
+    
+    # Filter to requested year only
+    # The API may return data beyond period_end (forecasts, planned values)
+    df = df[df["datetime"].dt.year == year].copy()
+
+    if df.empty:
+        raise ValueError(f"No data found for year {year} after filtering")
 
     df = (
         df.sort_values("datetime")
           .drop_duplicates(subset=["datetime"])
           .reset_index(drop=True)
     )
+
+    # Resample to strict hourly frequency
+    # Handles sub-hourly points introduced by ENTSO-E during DST transitions
+    print(f"[DEBUG] Before resample : {len(df)} lines")
+    df = (
+        df.set_index("datetime")
+          .resample("1h")["load_MW"]
+          .mean()
+          .reset_index()
+    )
+    print(f"[DEBUG] After resample : {len(df)} lines")
 
     return df
 

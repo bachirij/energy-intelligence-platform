@@ -177,5 +177,5 @@ if __name__ == "__main__":
         latitude=48.8534,
         longitude=2.3488,
         start_year=2015,
-        end_year=2024
+        end_year=2025
     )
