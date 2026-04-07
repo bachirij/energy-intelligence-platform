@@ -116,11 +116,25 @@ def fetch_entsoe_realtime(
     if df.empty:
         raise ValueError("ENTSO-E returned an empty dataset for the requested window.")
 
+    # Filter to requested window (in case ENTSO-E returns extra data beyond period_end)
+    df = df[(df["datetime"] >= start) & (df["datetime"] <= now_utc)].copy()
+
     df = (
         df.sort_values("datetime")
           .drop_duplicates(subset=["datetime"])
           .reset_index(drop=True)
     )
+
+    # Resample to strict hourly frequency
+    # Handles sub-hourly points introduced by ENTSO-E during DST transitions
+    print(f"[DEBUG] Before resample : {len(df)} lines")
+    df = (
+        df.set_index("datetime")
+          .resample("1h")["load_MW"]
+          .mean()
+          .reset_index()
+    )
+    print(f"[DEBUG] After resample : {len(df)} lines")
 
     print(f"[ENTSOE] Fetched {len(df)} hourly rows")
     return df
@@ -230,6 +244,9 @@ def build_realtime_snapshot(
 
     df_demand["datetime"] = pd.to_datetime(df_demand["datetime"], utc=True).dt.floor("h")
     df_weather["datetime"] = pd.to_datetime(df_weather["datetime"], utc=True).dt.floor("h")
+
+    # Substract 1 hour from weather timestamps to align with demand (weather at t is used to predict demand at t+1)
+    df_weather['datetime'] = df_weather['datetime'] - pd.Timedelta(hours=1)
 
     df_merged = df_demand.merge(df_weather, on="datetime", how="left")
 
