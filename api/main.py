@@ -7,6 +7,9 @@ from datetime import timezone
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 
+# Determine the base directory of the project (two levels up from this file)
+BASE_DIR = Path(__file__).resolve().parents[1]
+
 # Create the FastAPI app
 app = FastAPI()
 
@@ -20,10 +23,10 @@ fr_holidays = None
 def load_model():
     global model, model_metadata, fr_holidays
     # Load the pre-trained model 
-    model = joblib.load('../models/best_model.pkl')
+    model = joblib.load(BASE_DIR / "models" / "best_model.pkl")
 
     # Load the model metadata (feature names) from a JSON file
-    with open('../models/training_results.json', 'r') as f:
+    with open(BASE_DIR / "models" / "training_results.json", 'r') as f:
         model_metadata = json.load(f)
 
     # Load France holidays for calendar features
@@ -51,7 +54,7 @@ async def predict():
     # ------------------------------------------------------------------
     # 1. Load realtime parquet
     # ------------------------------------------------------------------
-    realtime_path = Path("../data/realtime/country=FR/realtime.parquet")
+    realtime_path = BASE_DIR / "data" / "realtime" / "country=FR" / "realtime.parquet"
     if not realtime_path.exists():
         raise HTTPException(status_code=503, detail="Realtime data not available")
 

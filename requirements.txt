@@ -1,10 +1,7 @@
 # Core
-os
-pathlib
 numpy
 pandas
 pyarrow
-datetime
 
 # HTTP / APIs
 requests
@@ -13,12 +10,11 @@ retry-requests
 lxml
 fastapi
 uvicorn
-json
 
 # Scheduling
 apscheduler
 
-# Weather 
+# Weather
 openmeteo-requests
 
 # Utils
