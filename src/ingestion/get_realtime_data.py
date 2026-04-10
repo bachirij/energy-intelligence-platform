@@ -42,7 +42,7 @@ ENTSOE_BASE_URL = "https://web-api.tp.entsoe.eu/api"
 OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
 # Rolling window: how many hours of realtime data to keep on disk
-ROLLING_WINDOW_HOURS = 24 * 7  # 7 days
+ROLLING_WINDOW_HOURS = 24 * 7 + 24 # 7 + 1 days
 
 
 # ---------------------------------------------------------------------
@@ -51,7 +51,7 @@ ROLLING_WINDOW_HOURS = 24 * 7  # 7 days
 def fetch_entsoe_realtime(
     country_code: str,
     api_token: str,
-    lookback_hours: int = 168,
+    lookback_hours: int = 168 + 24,  # 7 days + 1 day buffer
 ) -> pd.DataFrame:
     """
     Fetch actual electricity demand from ENTSO-E for the last N hours.
@@ -345,11 +345,11 @@ def fetch_and_store_realtime(
     print(f"\n[REALTIME] Starting real-time ingestion | country={country}")
     print(f"[REALTIME] Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
 
-    # Step 1 — ENTSO-E demand (last 168h)
+    # Step 1 — ENTSO-E demand (last 168 + 24h)
     df_demand = fetch_entsoe_realtime(
         country_code=country_code,
         api_token=api_token,
-        lookback_hours=168,
+        lookback_hours=168 + 24,  # fetch 7 days + 1 day buffer to ensure we have all lag features covered
     )
 
     # Step 2 — Open-Meteo forecast (next 2h)
