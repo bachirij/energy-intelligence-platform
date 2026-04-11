@@ -18,7 +18,7 @@ from sklearn.preprocessing import StandardScaler
 import xgboost as xgb
 import lightgbm as lgb
 
-from config import RIDGE_PARAMS, XGBOOST_PARAMS, LIGHTGBM_PARAMS
+from src.modeling.config import RIDGE_PARAMS, XGBOOST_PARAMS, LIGHTGBM_PARAMS
 
 
 def build_models() -> dict[str, Pipeline]:

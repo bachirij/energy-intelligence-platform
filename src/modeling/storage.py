@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import COUNTRY, FEATURE_COLS, TARGET_COL, TRAIN_END, VAL_END
+from src.modeling.config import COUNTRY, FEATURE_COLS, TARGET_COL, TRAIN_END, VAL_END
 
 
 # ---------------------------------------------------------------------

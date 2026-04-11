@@ -26,10 +26,10 @@ Usage:
     python main.py --steps train
 """
 
-from config   import COUNTRY, YEARS
-from models   import build_models
-from evaluate import compute_metrics, print_summary
-from storage  import load_features, split_data, save_model_and_results
+from src.modeling.config   import COUNTRY, YEARS
+from src.modeling.models   import build_models
+from src.modeling.evaluate import compute_metrics, print_summary
+from src.modeling.storage  import load_features, split_data, save_model_and_results
 
 
 # ---------------------------------------------------------------------

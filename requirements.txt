@@ -2,7 +2,6 @@
 numpy
 pandas
 pyarrow
-pytest
 
 # HTTP / APIs
 requests
@@ -21,6 +20,8 @@ openmeteo-requests
 # Utils
 python-dotenv
 holidays
+pytest
+evidently
 
 # Visualization
 matplotlib

@@ -55,7 +55,7 @@ COUNTRIES = {
     }
 }
 
-ALL_STEPS = ["ingest", "preprocess", "features", "train", "realtime"]
+ALL_STEPS = ["ingest", "preprocess", "features", "train", "realtime", "monitor"]
 
 DEFAULT_COUNTRY    = "FR"
 DEFAULT_START_YEAR = 2015
@@ -81,6 +81,7 @@ def import_modules() -> dict:
         from src.preprocessing.build_preprocessed_dataset import build_processed_dataset
         from src.feature_engineering.build_features import build_load_forecasting_features
         from src.modeling.train import run_training
+        from src.monitoring.monitor import run_monitoring
 
         return {
             "fetch_entsoe_demand_and_store":     fetch_entsoe_demand_and_store,
@@ -89,6 +90,7 @@ def import_modules() -> dict:
             "build_processed_dataset":           build_processed_dataset,
             "build_load_forecasting_features":   build_load_forecasting_features,
             "run_training":                      run_training,
+            "run_monitoring": run_monitoring,
         }
 
     except ImportError as e:
@@ -185,6 +187,38 @@ def step_realtime(country: str, start_year: int, end_year: int, modules: dict):
         longitude=meta["longitude"],
     )
 
+def step_monitor(country: str, start_year: int, end_year: int, modules: dict):
+    """
+    Step 6 — Drift monitoring.
+    Compares realtime feature distributions against the 2024 training
+    reference using Evidently. Saves a timestamped JSON report in
+    data/monitoring/ and logs [WARN] alerts on critical features.
+    country / start_year / end_year are ignored (monitoring is always global).
+    """
+    print("\n--- Drift monitoring (realtime vs. reference 2024) ---")
+    modules["run_monitoring"]()
+
+
+def step_realtime(country: str, start_year: int, end_year: int, modules: dict):
+    """
+    Step 5 — Real-time ingestion (manual trigger).
+    Fetches the last 48h of demand and the next 2h weather forecast.
+    Automatically runs drift monitoring after ingestion.
+    start_year / end_year are ignored for this step.
+    For automated hourly execution, use scheduler.py instead.
+    """
+    meta = COUNTRIES[country]
+
+    print("\n--- Real-time ingestion (last 48h demand + 2h weather forecast) ---")
+    modules["fetch_and_store_realtime"](
+        country=country,
+        country_code=meta["entsoe_code"],
+        latitude=meta["latitude"],
+        longitude=meta["longitude"],
+    )
+
+    print("\n--- Drift monitoring (auto-triggered after realtime) ---")
+    modules["run_monitoring"]()
 
 # ---------------------------------------------------------------------
 # Orchestrator
@@ -196,6 +230,7 @@ STEP_FUNCTIONS = {
     "features":   step_features,
     "train":      step_train,
     "realtime":   step_realtime,
+    "monitor":    step_monitor,
 }
 
 
