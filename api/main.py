@@ -6,12 +6,10 @@ import holidays
 from datetime import timezone
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
 
 # Determine the base directory of the project (two levels up from this file)
 BASE_DIR = Path(__file__).resolve().parents[1]
-
-# Create the FastAPI app
-app = FastAPI()
 
 # Model variables to hold the loaded model and metadata (global variables)
 model = None
@@ -19,18 +17,17 @@ model_metadata = None
 fr_holidays = None
 
 # Load the model and metadata at api startup
-@app.on_event("startup")
-def load_model():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global model, model_metadata, fr_holidays
-    # Load the pre-trained model 
     model = joblib.load(BASE_DIR / "models" / "best_model.pkl")
-
-    # Load the model metadata (feature names) from a JSON file
-    with open(BASE_DIR / "models" / "training_results.json", 'r') as f:
+    with open(BASE_DIR / "models" / "training_results.json", "r") as f:
         model_metadata = json.load(f)
-
-    # Load France holidays for calendar features
     fr_holidays = holidays.country_holidays("FR")
+    yield
+
+# Create the FastAPI app
+app = FastAPI(lifespan=lifespan)
 
 # GET /health endpoint to check if the API is running
 @app.get("/health")

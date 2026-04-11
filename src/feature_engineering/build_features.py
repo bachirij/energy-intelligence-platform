@@ -29,6 +29,46 @@ PROCESSED_BASE_PATH = PROJECT_ROOT / "data" / "processed"
 FEATURED_BASE_PATH = PROJECT_ROOT / "data" / "featured"
 
 # ---------------------------------------------------------------------
+# Core feature engineering logic (extracted for unit testing)
+# ---------------------------------------------------------------------
+
+def _compute_features(df: pd.DataFrame, country: str, forecast_horizon: int = 1) -> pd.DataFrame:
+    """
+    Pure feature engineering logic, without input/output.
+    Extracted for unit testing.
+    """
+    df = df.copy().sort_values("datetime").reset_index(drop=True)
+
+    # Target variable (h+1)
+    df[f"target_load_t+{forecast_horizon}"] = df["load_MW"].shift(-forecast_horizon)
+
+    # Calendar features
+    df["hour"] = df["datetime"].dt.hour
+    df["day_of_week"] = df["datetime"].dt.dayofweek
+    df["is_weekday"] = (df["day_of_week"] < 5).astype(int)
+    df["week_of_year"] = df["datetime"].dt.isocalendar().week.astype(int)
+    # Replace ISO week 53 by 52 for consistency
+    df.loc[df["week_of_year"] == 53, "week_of_year"] = 52
+
+    # Holidays (treated as non-working days)
+    country_holidays = holidays.country_holidays(country)
+    df["is_holiday"] = df["datetime"].dt.tz_convert("Europe/Paris").apply(
+        lambda x: 1 if x.date() in country_holidays else 0
+    )
+    # Holidays override weekday flag
+    df.loc[df["is_holiday"] == 1, "is_weekday"] = 0
+
+    # Lag features
+    df["load_t-1"]        = df["load_MW"].shift(1)
+    df["load_t-24"]       = df["load_MW"].shift(24)
+    df["load_t-168"]      = df["load_MW"].shift(24 * 7)
+    df["temperature_t-24"] = df["temperature_2m"].shift(24)
+
+    df = df.rename(columns={"load_MW": "load_t", "temperature_2m": "temperature_t"})
+
+    return df
+
+# ---------------------------------------------------------------------
 # Core feature engineering function
 # ---------------------------------------------------------------------
 
@@ -76,48 +116,13 @@ def build_load_forecasting_features(
     )
 
     # ------------------------------------------------------------
-    # Target variable (h+1)
+    # Feature engineering (pure logic, extracted for testability)
     # ------------------------------------------------------------
-    df[f"target_load_t+{forecast_horizon}"] = df["load_MW"].shift(-forecast_horizon)
-
-    # ------------------------------------------------------------
-    # Calendar features
-    # ------------------------------------------------------------
-    df["hour"] = df["datetime"].dt.hour
-
-    df["day_of_week"] = df["datetime"].dt.dayofweek
-    df["is_weekday"] = (df["day_of_week"] < 5).astype(int)
-
-    df["week_of_year"] = df["datetime"].dt.isocalendar().week.astype(int)
-    # Replace ISO week 53 by 52 for consistency
-    df.loc[df["week_of_year"] == 53, "week_of_year"] = 52
-
-    # ------------------------------------------------------------
-    # Holidays (treated as non-working days)
-    # ------------------------------------------------------------
-    country_holidays = holidays.country_holidays(country)
-
-    df["is_holiday"] = df["datetime"].dt.tz_convert("Europe/Paris").apply(
-        lambda x: 1 if x.date() in country_holidays else 0
-    )
-
-    # Holidays override weekday flag
-    df.loc[df["is_holiday"] == 1, "is_weekday"] = 0
-
-    # ------------------------------------------------------------
-    # Lag features
-    # ------------------------------------------------------------
-    df["load_t-1"] = df["load_MW"].shift(1)
-    df["load_t-24"] = df["load_MW"].shift(24)
-    df["load_t-168"] = df["load_MW"].shift(24 * 7)
-    df["temperature_t-24"] = df["temperature_2m"].shift(24)
+    df = _compute_features(df, country=country, forecast_horizon=forecast_horizon)
 
     # ------------------------------------------------------------
     # Feature selection
     # ------------------------------------------------------------
-    # Rename the load column
-    df = df.rename(columns = {"load_MW": "load_t", "temperature_2m": "temperature_t"})
-
     feature_cols = [
         "datetime",
         "load_t",
