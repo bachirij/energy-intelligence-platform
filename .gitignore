@@ -1,11 +1,20 @@
+# Environment
 .env
+
+# Cache files
 *.cache.sqlite
 .cache.sqlite
+.cache/
+
+# Python cache
 .conda
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-.cache/
+*.pyo
+*.pyd
+
+# Set up cache
 energy_intelligence_platform.egg-info
 
 

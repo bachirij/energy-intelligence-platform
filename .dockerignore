@@ -1,9 +1,6 @@
-# ---------------------------------------------------------------
-# .dockerignore — files excluded from the Docker image
-# ---------------------------------------------------------------
-# Same principle as .gitignore — keeps the image lightweight
+# .dockerignore: files excluded from the Docker image
+# Same principle as .gitignore: keeps the image lightweight
 # and avoids copying sensitive or unnecessary files.
-# ---------------------------------------------------------------
 
 # Raw and processed data (heavy, not needed to serve predictions)
 data/
@@ -44,3 +41,6 @@ Thumbs.db
 
 # Scheduler (not needed in the API container)
 scheduler.py
+
+# Set up cache
+energy_intelligence_platform.egg-info

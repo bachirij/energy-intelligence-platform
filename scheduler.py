@@ -189,10 +189,10 @@ def parse_args():
         description="energy-intelligence-platform — Automated real-time pipeline scheduler",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
-Examples:
-  python scheduler.py                        # production mode, every hour at :05
-  python scheduler.py --country FR           # explicit country
-  python scheduler.py --interval 2           # test mode, every 2 minutes
+        Examples:
+        python scheduler.py                        # production mode, every hour at :05
+        python scheduler.py --country FR           # explicit country
+        python scheduler.py --interval 2           # test mode, every 2 minutes
         """
     )
 
