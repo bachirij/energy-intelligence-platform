@@ -13,6 +13,7 @@ __pycache__/
 .ipynb_checkpoints/
 *.pyo
 *.pyd
+.pytest_cache/
 
 # Set up cache
 energy_intelligence_platform.egg-info
