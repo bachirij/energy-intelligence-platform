@@ -5,6 +5,7 @@ Historical tab: period selector and load curves.
 """
 import streamlit as st
 import pandas as pd
+import datetime
 
 from utils.data_loader import load_featured_range
 from utils.charts import load_curve
@@ -15,11 +16,14 @@ def render() -> None:
     st.header("Historical data")
 
     # --- Period selector ---
+    current_year = datetime.date.today().year
+    year_options = list(range(2015, current_year + 1))
+
     col1, col2 = st.columns(2)
     with col1:
-        year_start = st.selectbox("From", options=list(range(2015, 2026)), index=0)
+        year_start = st.selectbox("From", options=year_options, index=0)
     with col2:
-        year_end = st.selectbox("To", options=list(range(2015, 2026)), index=9)
+        year_end = st.selectbox("To", options=year_options, index=len(year_options) - 1)
 
     if year_start > year_end:
         st.error("Start year must be before end year.")

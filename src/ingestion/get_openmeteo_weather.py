@@ -18,6 +18,7 @@ import pandas as pd
 import requests_cache
 from retry_requests import retry
 import openmeteo_requests
+import datetime as datetime
 
 
 # ---------------------------------------------------------------------
@@ -72,7 +73,7 @@ def fetch_openmeteo_weather_one_year(
         "latitude": latitude,
         "longitude": longitude,
         "start_date": f"{year}-01-01",
-        "end_date": f"{year}-12-31",
+        "end_date": min(f"{year}-12-31", datetime.date.today().isoformat()),
         "hourly": [
             "temperature_2m",
             "relative_humidity_2m",

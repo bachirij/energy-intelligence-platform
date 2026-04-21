@@ -103,6 +103,12 @@ def fetch_entsoe_demand_one_year(
 
     if df.empty:
         raise ValueError(f"No data found for year {year} after filtering")
+    
+    # For the current year, drop future rows (ENTSO-E returns planned/forecast values)
+    today = pd.Timestamp.now(tz="UTC").normalize()
+    df = df[df["datetime"] <= today].copy()
+    if df.empty:
+        raise ValueError(f"No data found for year {year} after filtering future rows")
 
     df = (
         df.sort_values("datetime")
