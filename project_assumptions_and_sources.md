@@ -6,6 +6,28 @@ This document describes the data sources, modeling assumptions, and known limita
 
 ---
 
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+  - [Running the Pipeline](#running-the-pipeline)
+  - [Starting the API](#starting-the-api)
+  - [Launching the Dashboard](#launching-the-dashboard)
+  - [Scheduling Automated Updates](#scheduling-automated-updates)
+- [API Reference](#api-reference)
+- [Model Performance](#model-performance)
+- [MLOps — Drift Monitoring](#mlops--drift-monitoring)
+- [Tests](#tests)
+- [Docker](#docker)
+- [Data Sources](#data-sources)
+- [Documentation](#documentation)
+
+---
+
 ## 1. Data Sources
 
 ### 1.1 Electricity Demand - ENTSO-E Transparency Platform
@@ -283,7 +305,7 @@ The **global MAE of 5,606 MW is a pessimistic upper bound** and not representati
 
 ---
 
-## 9. Serving Layer — FastAPI + Docker
+## 9. Serving Layer - FastAPI + Docker
 
 ### 9.1 API design
 
