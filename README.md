@@ -1,41 +1,16 @@
-# Energy Demand Intelligence Platform
+# Energy Intelligence Platform
 
-A production-grade machine learning system for forecasting hourly electricity demand in France. The platform ingests real-time and historical data from ENTSO-E and Open-Meteo, trains and compares multiple ML models, and serves predictions through a REST API.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-  - [Running the Pipeline](#running-the-pipeline)
-  - [Starting the API](#starting-the-api)
-  - [Scheduling Automated Updates](#scheduling-automated-updates)
-- [API Reference](#api-reference)
-- [Model Performance](#model-performance)
-- [Docker](#docker)
-- [Data Sources](#data-sources)
-- [Notebooks](#notebooks)
+> End-to-end machine learning system for hourly electricity demand forecasting in France: from raw API data to a live interactive dashboard.
 
 ---
 
 ## Overview
 
-The Energy Demand Intelligence Platform predicts France's electricity load one hour ahead (h+1). Accurate demand forecasting is critical for grid operators to balance supply, reduce costs, and integrate renewable energy sources.
+The Energy Intelligence Platform predicts France's electricity consumption one hour ahead (h+1). The system covers the full ML lifecycle: historical data ingestion, preprocessing, feature engineering, model training and comparison, real-time inference via a REST API, automated drift monitoring, and an interactive Streamlit dashboard.
 
-**Key capabilities:**
+Accurate short-term demand forecasting is critical for grid operators: it enables better supply/demand balancing, cost reduction, and smoother integration of renewable energy sources.
 
-- Historical data ingestion from 2015 to 2024 (ENTSO-E + Open-Meteo)
-- Automated hourly real-time data updates via a built-in scheduler
-- Feature engineering with lag features, calendar features, and weather signals
-- Multi-model training and comparison (Ridge, XGBoost, LightGBM)
-- FastAPI REST endpoint for on-demand predictions
-- Docker support for production deployment
+**Best model:** XGBoost, with validation MAE of **583 MW** (~1.0% of average national load).
 
 ---
 
@@ -43,26 +18,34 @@ The Energy Demand Intelligence Platform predicts France's electricity load one h
 
 ```
 ENTSO-E API ──┐
-              ├──► Ingestion ──► Raw Data (Parquet)
-Open-Meteo ───┘                        │
+              ├──► Ingestion ──► Raw Parquet (Hive partitioned)
+Open-Meteo ───┘                         │
                                         ▼
                                  Preprocessing
+                              (merge, interpolation)
                                         │
                                         ▼
                               Feature Engineering
+                         (lag features, calendar, weather)
                                         │
                                         ▼
-                               Model Training
-                          (Ridge / XGBoost / LightGBM)
+                         Model Training & Comparison
+                         (Ridge / XGBoost / LightGBM)
                                         │
                                         ▼
-                              Best Model Saved
+                           Best Model → best_model.pkl
                                         │
-                                        ▼
-                              FastAPI Prediction API
+                              ┌─────────┴──────────┐
+                              ▼                    ▼
+                     FastAPI /predict        Streamlit Dashboard
+                     (h+1 inference)         (realtime · historical · MLOps)
+                              │
+                              ▼
+                     APScheduler (hourly)
+                     + Drift Monitoring (Evidently)
 ```
 
-Data is stored as partitioned Parquet files (`country=XX/year=YYYY/`) at each stage, enabling efficient querying and straightforward extension to additional countries.
+All intermediate data is stored as partitioned Parquet files (`country=XX/year=YYYY/`) at each pipeline stage, enabling efficient querying and straightforward extension to additional countries.
 
 ---
 
@@ -72,51 +55,72 @@ Data is stored as partitioned Parquet files (`country=XX/year=YYYY/`) at each st
 energy-intelligence-platform/
 │
 ├── api/
-│   └── app.py                  # FastAPI application and prediction endpoints
+│   └── main.py                          # FastAPI application and /predict endpoint
+│
+├── dashboard/
+│   ├── dashboard.py                     # Entry point: page config, sidebar, routing
+│   ├── tabs/
+│   │   ├── realtime.py                  # Live load curve + h+1 prediction
+│   │   ├── historical.py                # Dynamic year selector with auto-resampling
+│   │   └── model_perf.py                # Metrics, feature importance, drift report
+│   └── utils/
+│       ├── data_loader.py               # Parquet/JSON reads with @st.cache_data
+│       ├── prediction.py                # Feature reconstruction + model inference
+│       └── charts.py                    # Reusable Plotly figures
 │
 ├── src/
 │   ├── ingestion/
-│   │   ├── get_entsoe_demand.py         # Historical electricity demand from ENTSO-E
-│   │   ├── get_openmeteo_weather.py     # Historical weather from Open-Meteo
-│   │   └── get_realtime_data.py         # Real-time data fetching (last 48h)
-│   │
+│   │   ├── get_entsoe_demand.py         # Historical electricity demand (ENTSO-E)
+│   │   ├── get_openmeteo_weather.py     # Historical weather (Open-Meteo)
+│   │   └── get_realtime_data.py         # Rolling 192h real-time snapshot
 │   ├── preprocessing/
-│   │   └── build_preprocessed_dataset.py  # Cleaning, merging, interpolation
-│   │
+│   │   └── build_preprocessed_dataset.py
 │   ├── feature_engineering/
-│   │   └── build_features.py            # Lag, calendar, and weather features
-│   │
+│   │   └── build_features.py
 │   ├── modeling/
-│   │   └── train.py                     # Model training, evaluation, and export
-│   │
-│   └── evaluation/
-│       └── metrics.py                   # MAE and RMSE utilities
+│   │   ├── config.py                    # FEATURE_COLS: single source of truth
+│   │   ├── models.py
+│   │   ├── train.py
+│   │   ├── evaluate.py
+│   │   └── storage.py
+│   └── monitoring/
+│       └── monitor.py                   # Evidently drift monitoring (KS test)
 │
 ├── data/
-│   ├── raw/                    # Raw API responses (partitioned Parquet)
-│   ├── processed/              # Cleaned and merged data
-│   ├── featured/               # ML-ready feature datasets
-│   └── realtime/               # Rolling 7-day real-time data
+│   ├── raw/                             # Raw API responses
+│   ├── processed/                       # Cleaned and merged data
+│   ├── featured/                        # ML-ready feature datasets
+│   ├── realtime/                        # Rolling real-time snapshot
+│   └── monitoring/                      # Timestamped drift reports (JSON)
 │
 ├── models/
-│   ├── best_model.pkl          # Trained XGBoost pipeline (sklearn)
-│   └── training_results.json   # Model metadata and performance metrics
+│   ├── best_model.pkl                   # Trained XGBoost pipeline
+│   └── training_results.json            # Metrics, feature names, metadata
 │
-├── notebooks/                  # Exploratory and step-by-step notebooks
+├── tests/                               # 27 unit tests: all passing
+│   ├── test_get_realtime_data.py
+│   ├── test_build_preprocessed_dataset.py
+│   ├── test_build_features.py
+│   ├── test_api.py
+│   └── test_monitor.py
 │
-├── main.py                     # Pipeline orchestrator
-├── scheduler.py                # Automated hourly ingestion scheduler
+├── docs/
+│   └── project_assumptions_and_sources.md
+│
+├── notebooks/
+├── main.py                              # Pipeline orchestrator (--steps flag)
+├── scheduler.py                         # APScheduler: hourly real-time updates
 ├── Dockerfile
 ├── requirements.txt
-└── .env                        # API credentials (not committed)
+└── .env                                 # API credentials (not committed, but .env.example provided)
 ```
 
 ---
 
 ## Prerequisites
 
-- Python 3.7+
-- An ENTSO-E API token (free registration at [transparency.entsoe.eu](https://transparency.entsoe.eu))
+- Python 3.12 (conda environment recommended)
+- An ENTSO-E API token: free registration at [transparency.entsoe.eu](https://transparency.entsoe.eu)
 - Docker (optional, for containerized deployment)
 
 ---
@@ -130,12 +134,11 @@ git clone https://github.com/your-username/energy-intelligence-platform.git
 cd energy-intelligence-platform
 ```
 
-**2. Create and activate a virtual environment**
+**2. Create and activate the conda environment**
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate       # macOS/Linux
-.venv\Scripts\activate          # Windows
+conda create -n energy_ml_312 python=3.12
+conda activate energy_ml_312
 ```
 
 **3. Install dependencies**
@@ -144,17 +147,23 @@ source .venv/bin/activate       # macOS/Linux
 pip install -r requirements.txt
 ```
 
+On macOS, XGBoost requires `libomp`:
+
+```bash
+brew install libomp
+```
+
 ---
 
 ## Configuration
 
-Create a `.env` file at the root of the project:
+Create a `.env` file at the project root:
 
 ```env
 ENTSOE_API_TOKEN=your_api_token_here
 ```
 
-Your ENTSO-E token is the only required credential. Open-Meteo does not require authentication.
+Open-Meteo does not require authentication.
 
 ---
 
@@ -162,123 +171,85 @@ Your ENTSO-E token is the only required credential. Open-Meteo does not require 
 
 ### Running the Pipeline
 
-The `main.py` orchestrator runs the full pipeline or individual steps.
-
 ```bash
-# Run the complete pipeline (ingest → preprocess → features → train)
+# Full pipeline: ingest → preprocess → features → train
 python main.py
 
-# Limit to a specific year range
-python main.py --start-year 2022 --end-year 2024
-
-# Run individual steps
+# Individual steps
 python main.py --steps ingest
 python main.py --steps preprocess features
 python main.py --steps train
 
-# Trigger a real-time data refresh
+# Real-time data refresh + automatic drift monitoring
 python main.py --steps realtime
 ```
 
 **Pipeline steps:**
 
-| Step         | Description                                                     |
-| ------------ | --------------------------------------------------------------- |
-| `ingest`     | Fetch historical demand and weather data from APIs              |
-| `preprocess` | Clean, merge, and interpolate missing values                    |
-| `features`   | Build lag, calendar, and weather features                       |
-| `train`      | Train Ridge, XGBoost, and LightGBM; save best model             |
-| `realtime`   | Fetch the last 48 hours of demand and a 2-hour weather forecast |
+| Step         | Description                                                       |
+| ------------ | ----------------------------------------------------------------- |
+| `ingest`     | Fetch historical demand and weather from APIs (2015–2025)         |
+| `preprocess` | Clean, merge, and interpolate missing values                      |
+| `features`   | Build lag, calendar, and weather features                         |
+| `train`      | Train Ridge, XGBoost, LightGBM; save best model                   |
+| `realtime`   | Fetch the rolling 192h snapshot + run drift monitoring            |
+| `monitor`    | Run drift monitoring standalone on the current real-time snapshot |
 
 ### Starting the API
 
 ```bash
-# Development (auto-reload on code changes)
-uvicorn api.app:app --reload
+# Development
+python -m uvicorn api.main:app --reload
 
 # Production
-uvicorn api.app:app --host 0.0.0.0 --port 8000
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
-The API will be available at `http://localhost:8000`. Interactive documentation is at `http://localhost:8000/docs`.
+Interactive docs available at `http://localhost:8000/docs`.
+
+### Launching the Dashboard
+
+```bash
+streamlit run dashboard/dashboard.py
+```
 
 ### Scheduling Automated Updates
 
-The scheduler runs real-time ingestion automatically.
-
 ```bash
-# Production mode: runs hourly at HH:05
+# Production: runs at HH:05 every hour
 python scheduler.py
 
 # Test mode: runs every N minutes
 python scheduler.py --interval 2
-
-# Specify a country explicitly
-python scheduler.py --country FR
 ```
 
 ---
 
 ## API Reference
 
-### `GET /`
-
-Returns API status and a link to the documentation.
-
 ### `GET /health`
-
-Returns model loading status.
 
 ```json
 {
   "status": "ok",
   "model_loaded": true,
-  "model_name": "xgboost"
+  "model_name": "xgboost",
+  "feature_cols": ["load_t", "load_t-1", "load_t-24", ...]
 }
 ```
 
-### `GET /model/info`
+### `GET /predict`
 
-Returns model metadata, feature names, training/validation/test metrics, and date ranges.
-
-### `POST /predict`
-
-Returns an h+1 electricity load forecast.
-
-**Request body:**
-
-```json
-{
-  "load_t": 45000.0,
-  "load_t_minus_1": 44800.0,
-  "load_t_minus_24": 43500.0,
-  "load_t_minus_168": 46200.0,
-  "temperature_t": 12.5,
-  "hour": 9,
-  "is_weekday": 1,
-  "week_of_year": 12
-}
-```
-
-| Field              | Type  | Description                                          |
-| ------------------ | ----- | ---------------------------------------------------- |
-| `load_t`           | float | Current electricity load in MW                       |
-| `load_t_minus_1`   | float | Load 1 hour ago in MW                                |
-| `load_t_minus_24`  | float | Load 24 hours ago in MW                              |
-| `load_t_minus_168` | float | Load 168 hours (1 week) ago in MW                    |
-| `temperature_t`    | float | Current temperature in °C                            |
-| `hour`             | int   | Current hour (0–23)                                  |
-| `is_weekday`       | int   | 1 if weekday (and not a public holiday), 0 otherwise |
-| `week_of_year`     | int   | ISO week number (1–52)                               |
+Builds features from the real-time Parquet snapshot and returns the h+1 forecast. No request body required: all feature values are reconstructed server-side from stored data.
 
 **Response:**
 
 ```json
 {
   "prediction_mw": 46234.5,
-  "prediction_datetime_utc": "2024-03-29T10:00:00+00:00",
+  "prediction_datetime_utc": "2025-03-29T10:00:00+00:00",
   "model": "xgboost",
-  "timestamp_utc": "2024-03-29T09:00:00+00:00"
+  "timestamp_utc": "2025-03-29T09:00:00+00:00"
 }
 ```
 
@@ -286,71 +257,99 @@ Returns an h+1 electricity load forecast.
 
 ## Model Performance
 
-Models are trained on French electricity data from 2015 to 2024 using a strict temporal split to prevent data leakage.
+Models are trained on French electricity data from 2015 to 2025 using a strict temporal split.
 
 | Period     | Years     |
 | ---------- | --------- |
-| Training   | 2015–2022 |
-| Validation | 2023      |
-| Test       | 2024      |
+| Training   | 2015–2023 |
+| Validation | 2024      |
+| Test       | 2025      |
 
-**Results:**
+**Results (validation MAE):**
 
-| Model            | Validation MAE (MW) | Test MAE (MW) |
-| ---------------- | ------------------- | ------------- |
-| Ridge Regression | —                   | —             |
-| LightGBM         | —                   | —             |
-| **XGBoost**      | **701.71**          | **594.78**    |
+| Model            | Val MAE (MW) |
+| ---------------- | ------------ |
+| Ridge Regression | —            |
+| LightGBM         | —            |
+| **XGBoost**      | **583**      |
 
-XGBoost was selected as the best model and is used for all API predictions.
+XGBoost is the best model and is used for all inference.
+
+> **Note on test set (2025):** Test MAE is significantly higher than validation MAE due to out-of-distribution conditions: exceptional cold in winter 2025 and unexpectedly low consumption in spring/autumn. This is a documented distribution shift, not a model defect. See `docs/project_assumptions_and_sources.md §4` for details.
 
 **Input features:**
 
-| Feature            | Description                      |
-| ------------------ | -------------------------------- |
-| `load_t`           | Current load                     |
-| `load_t_minus_1`   | 1-hour lag                       |
-| `load_t_minus_24`  | 24-hour lag                      |
-| `load_t_minus_168` | Weekly lag                       |
-| `temperature_t`    | Current temperature              |
-| `hour`             | Hour of day                      |
-| `is_weekday`       | Weekday / weekend / holiday flag |
-| `week_of_year`     | Seasonal signal                  |
+| Feature            | Description                                  |
+| ------------------ | -------------------------------------------- |
+| `load_t`           | Current load (MW)                            |
+| `load_t-1`         | Load 1 hour ago                              |
+| `load_t-24`        | Load 24 hours ago                            |
+| `load_t-168`       | Load 168 hours ago (weekly seasonality)      |
+| `temperature_t`    | Forecasted temperature for t+1 (aligned -1h) |
+| `temperature_t-24` | Temperature 24 hours ago                     |
+| `hour`             | Hour of day (0–23)                           |
+| `is_weekday`       | 1 if weekday and not a public holiday        |
+| `day_of_week`      | Day of week (0=Monday)                       |
+| `week_of_year`     | ISO week number (1–52)                       |
+
+Feature importance (XGBoost): `load_t` (52.8%) + `load_t-1` (38.9%) = **91.7%** of total importance.
+
+---
+
+## MLOps — Drift Monitoring
+
+At each real-time ingestion cycle, the monitor compares the current 24h snapshot against the 2024 reference distribution using Evidently's KS test (threshold p < 0.05).
+
+Eight features are monitored: the four load lags, `hour`, `day_of_week`, `is_weekday`, `week_of_year`. Temperature features are excluded, the real-time snapshot contains only ~2 hours of weather forecast, making temperature monitoring statistically meaningless.
+
+Results are saved as timestamped JSON reports in `data/monitoring/` and surfaced in the dashboard's **Model Performance** tab.
+
+> **Known artefact:** `hour` is structurally flagged as drifted (p ≈ 0.0) because the 24-row snapshot has a perfectly uniform hour distribution, while the 2024 reference is non-uniform. This is a false positive, documented in `docs/project_assumptions_and_sources.md §11.7`.
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v
+```
+
+27 tests, all passing (~2 seconds). Coverage: real-time ingestion, preprocessing, feature engineering, API endpoints, and drift monitoring.
 
 ---
 
 ## Docker
 
 ```bash
-# Build the image
+# Build
 docker build -t energy-intelligence-platform .
 
-# Run the container
-docker run -p 8000:8000 energy-intelligence-platform
+# Run (mount data volume, pass ENTSO-E token)
+docker run -p 8000:8000 \
+  --env-file .env \
+  -v $(pwd)/data:/app/data \
+  energy-intelligence-platform
 ```
-
-The API will be accessible at `http://localhost:8000`.
 
 ---
 
 ## Data Sources
 
-### ENTSO-E Transparency Platform
+**ENTSO-E Transparency Platform**
 
-- **URL**: [transparency.entsoe.eu](https://transparency.entsoe.eu)
-- **Data**: Actual hourly electricity demand for France
-- **Document type**: A65 (Actual Total Load), Process type: A16 (Realised)
-- **Authentication**: API token required (free registration)
+- URL: [transparency.entsoe.eu](https://transparency.entsoe.eu)
+- Data: Actual hourly electricity demand for France (Document type A65, Process type A16)
+- Authentication: API token required (free registration)
 
-### Open-Meteo
+**Open-Meteo**
 
-- **URL**: [open-meteo.com](https://open-meteo.com)
-- **Data**: Hourly weather — temperature, humidity, wind speed, solar radiation
-- **Authentication**: None required
-- **Endpoints**: Archive API (historical) and Forecast API (real-time)
+- URL: [open-meteo.com](https://open-meteo.com)
+- Data: Hourly temperature, humidity, wind speed, solar radiation
+- Authentication: None required
+- Endpoints: Archive API (historical) and Forecast API (real-time)
 
 ---
 
-## Notebooks
+## Documentation
 
-Step-by-step Jupyter notebooks walk through several stages of the pipeline.
+Design decisions, data assumptions, known limitations, and source references are documented in [`docs/project_assumptions_and_sources.md`](docs/project_assumptions_and_sources.md).
