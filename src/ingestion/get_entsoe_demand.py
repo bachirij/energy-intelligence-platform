@@ -165,9 +165,14 @@ def fetch_entsoe_demand_and_store(
         output_file = output_folder / "demand.parquet"
 
         # If the file already exists, we skip fetching 
-        if output_file.exists():
+        current_year = datetime.now().year
+
+        if output_file.exists() and year < current_year:
             print(f"[SKIP] {output_file} already exists")
             continue
+
+        if output_file.exists() and year == current_year:
+            print(f"[FETCH] {output_file} exists but year={year} is current year - refreshing")
 
         # If we reach this point, it means we need to fetch the data
         print(f"[FETCH] ENTSO-E demand | {country} | {year}")

@@ -18,5 +18,6 @@ __pycache__/
 # Set up cache
 energy_intelligence_platform.egg-info
 
-
-
+# Data files
+data/raw/
+data/processed/

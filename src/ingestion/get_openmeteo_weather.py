@@ -142,9 +142,14 @@ def fetch_openmeteo_weather_and_store(
         output_path = output_dir / "weather.parquet"
 
         # If the file already exists, we skip fetching 
-        if output_path.exists():
+        current_year = datetime.date.today().year  # datetime est importé comme "import datetime as datetime"
+
+        if output_path.exists() and year < current_year:
             print(f"[SKIP] {output_path} already exists")
             continue
+
+        if output_path.exists() and year == current_year:
+            print(f"[FETCH] {output_path} exists but year={year} is current year — refreshing")
 
         print(f"[FETCH] Open-Meteo weather | {country} | {year}")
 

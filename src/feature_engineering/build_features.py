@@ -165,9 +165,14 @@ def build_load_forecasting_features(
 
         output_path = output_dir / "load_forecasting_features.parquet"
 
-        if output_path.exists():
+        current_year = pd.Timestamp.now().year
+
+        if output_path.exists() and year < current_year:
             print(f"[SKIP] {output_path}")
             continue
+
+        if output_path.exists() and year == current_year:
+            print(f"[FETCH] {output_path} exists but year={year} is current year - refreshing")
 
         df_year.to_parquet(output_path, index=False)
 
