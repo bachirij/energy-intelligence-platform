@@ -25,6 +25,8 @@ evidently
 
 # Visualization
 matplotlib
+plotly
+streamlit
 
 # Models
 scikit-learn
