@@ -169,24 +169,6 @@ def step_train(country: str, start_year: int, end_year: int, modules: dict):
     print("    [INFO] Year range for training is managed by src/modeling/config.py")
     modules["run_training"](country=country)
 
-
-def step_realtime(country: str, start_year: int, end_year: int, modules: dict):
-    """
-    Step 5 — Real-time ingestion (manual trigger).
-    Fetches the last 48h of demand and the next 2h weather forecast.
-    start_year / end_year are ignored for this step.
-    For automated hourly execution, use scheduler.py instead.
-    """
-    meta = COUNTRIES[country]
-
-    print("\n--- Real-time ingestion (last 48h demand + 2h weather forecast) ---")
-    modules["fetch_and_store_realtime"](
-        country=country,
-        country_code=meta["entsoe_code"],
-        latitude=meta["latitude"],
-        longitude=meta["longitude"],
-    )
-
 def step_monitor(country: str, start_year: int, end_year: int, modules: dict):
     """
     Step 6 — Drift monitoring.
