@@ -3,7 +3,8 @@
 # and avoids copying sensitive or unnecessary files.
 
 # Raw and processed data (heavy, not needed to serve predictions)
-data/
+data/raw/
+data/processed/
 
 # Notebooks (exploration only, not needed in production)
 notebooks/
@@ -23,6 +24,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.vscode/
 
 # Cache files
 .cache/

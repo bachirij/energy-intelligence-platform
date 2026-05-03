@@ -1,6 +1,6 @@
-# pages/realtime.py
+# tabs/realtime.py
 """
-pages/realtime.py 
+tabs/realtime.py 
 
 Real-time tab: current day load curve and h+1 prediction.
 """
