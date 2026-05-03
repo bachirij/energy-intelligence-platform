@@ -1,8 +1,0 @@
-data/raw/
-data/processed/
-.cache/
-notebooks/
-tests/
-*.pyc
-__pycache__/
-.env
