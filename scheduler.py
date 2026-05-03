@@ -205,7 +205,7 @@ def start_scheduler(country: str, interval_minutes: int = None):
             next_run_time=datetime.now(timezone.utc),
         )
         logger.info(
-            f"[SCHEDULER] Test mode — realtime every {interval_minutes} min | "
+            f"[SCHEDULER] Test mode - realtime every {interval_minutes} min | "
             f"daily job disabled | country={country}"
         )
 
@@ -242,11 +242,11 @@ def start_scheduler(country: str, interval_minutes: int = None):
 
     # Summary banner
     print("=" * 60)
-    print("  energy-intelligence-platform — Scheduler")
+    print("  energy-intelligence-platform - Scheduler")
     print("=" * 60)
     print(f"  Country   : {country}")
     if interval_minutes:
-        print(f"  Mode      : TEST — realtime every {interval_minutes} min")
+        print(f"  Mode      : TEST - realtime every {interval_minutes} min")
         print(f"  Daily job : disabled")
     else:
         print(f"  Mode      : PRODUCTION")
@@ -269,7 +269,7 @@ def start_scheduler(country: str, interval_minutes: int = None):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="energy-intelligence-platform — Automated pipeline scheduler",
+        description="energy-intelligence-platform - Automated pipeline scheduler",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 Examples:

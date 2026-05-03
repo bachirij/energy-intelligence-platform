@@ -1,5 +1,5 @@
 """
-energy-intelligence-platform — Pipeline Orchestrator
+energy-intelligence-platform - Pipeline Orchestrator
 =====================================================
 
 Single entry point to run all or part of the data pipeline.
@@ -285,7 +285,7 @@ def run_pipeline(steps: list, country: str, start_year: int, end_year: int):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="energy-intelligence-platform — Electricity demand forecasting pipeline",
+        description="energy-intelligence-platform - Electricity demand forecasting pipeline",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
                 Examples:
