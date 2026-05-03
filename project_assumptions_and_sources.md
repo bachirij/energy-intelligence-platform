@@ -8,23 +8,18 @@ This document describes the data sources, modeling assumptions, and known limita
 
 ## Table of Contents
 
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-  - [Running the Pipeline](#running-the-pipeline)
-  - [Starting the API](#starting-the-api)
-  - [Launching the Dashboard](#launching-the-dashboard)
-  - [Scheduling Automated Updates](#scheduling-automated-updates)
-- [API Reference](#api-reference)
-- [Model Performance](#model-performance)
-- [MLOps — Drift Monitoring](#mlops--drift-monitoring)
-- [Tests](#tests)
-- [Docker](#docker)
-- [Data Sources](#data-sources)
-- [Documentation](#documentation)
+- [Data Sources](#1-data-sources)
+- [Modeling Assumptions](#2-modeling-assumptions)
+- [Geographic Assumptions](#3-geographic-assumptions)
+- [Preprocessing Assumptions](#4-preprocessing-assumptions)
+- [Feature Engineering Assumptions](#5-feature-engineering-assumptions)
+- [Real-Time Pipeline Assumptions](#6-real-time-pipeline-assumptions)
+- [Known Limitations & Future Improvements](#7-known-limitations--future-improvements)
+- [Modeling](#8-modeling)
+- [Serving Layer - FastAPI + Docker](#9-serving-layer---fastapi--docker)
+- [Unit Tests](#10-unit-tests)
+- [MLOps — Drift Monitoring](#11-mlops--drift-monitoring)
+- [Dashboard - Streamlit](#12-dashboard---streamlit)
 
 ---
 
