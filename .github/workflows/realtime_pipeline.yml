@@ -1,0 +1,87 @@
+name: Realtime Pipeline
+
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch: # manual trigger
+
+jobs:
+  run-realtime-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements_pipeline.txt
+
+      - name: Download reference data from HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'EOF'
+          from huggingface_hub import HfApi
+          from pathlib import Path
+
+          api = HfApi(token="${{ secrets.HF_TOKEN }}")
+          repo_id = "bachirij/energy-intelligence-platform"
+
+          # Download featured 2024 (drift reference)
+          api.hf_hub_download(
+              repo_id=repo_id,
+              repo_type="space",
+              filename="data/featured/country=FR/year=2024/load_forecasting_features.parquet",
+              local_dir=".",
+          )
+
+          # Download model (used by monitoring)
+          api.hf_hub_download(
+              repo_id=repo_id,
+              repo_type="space",
+              filename="models/best_model.pkl",
+              local_dir=".",
+          )
+          EOF
+
+      - name: Run realtime pipeline
+        env:
+          ENTSOE_API_TOKEN: ${{ secrets.ENTSOE_API_TOKEN }}
+        run: python main.py --steps realtime
+
+      - name: Upload updated data to HF
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'EOF'
+          from huggingface_hub import HfApi
+          from pathlib import Path
+
+          api = HfApi(token="${{ secrets.HF_TOKEN }}")
+          repo_id = "bachirij/energy-intelligence-platform"
+          repo_type = "space"
+
+          # Upload realtime snapshot
+          api.upload_file(
+              path_or_fileobj="data/realtime/country=FR/realtime.parquet",
+              path_in_repo="data/realtime/country=FR/realtime.parquet",
+              repo_id=repo_id,
+              repo_type=repo_type,
+          )
+
+          # Upload latest monitoring report
+          monitoring_dir = Path("data/monitoring")
+          latest = sorted(monitoring_dir.glob("*.json"))[-1]
+          api.upload_file(
+              path_or_fileobj=str(latest),
+              path_in_repo=f"data/monitoring/{latest.name}",
+              repo_id=repo_id,
+              repo_type=repo_type,
+          )
+          print("Done.")
+          EOF
