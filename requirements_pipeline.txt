@@ -1,0 +1,14 @@
+pandas
+pyarrow
+requests
+requests-cache
+retry-requests
+openmeteo-requests
+python-dotenv
+holidays
+evidently
+scikit-learn
+xgboost
+lightgbm
+joblib
+huggingface_hub
