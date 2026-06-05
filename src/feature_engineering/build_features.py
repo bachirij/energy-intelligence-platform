@@ -102,9 +102,25 @@ def build_load_forecasting_features(
             / f"year={year}"
             / "load_weather.parquet"
         )
+        if not path.exists():
+            continue
 
-        if path.exists():
-            dfs.append(pd.read_parquet(path))
+        df_year = pd.read_parquet(path)
+
+        # Bootstrap lag context from previous year if available
+        prev_path = (
+            PROCESSED_BASE_PATH
+            / f"country={country}"
+            / f"year={year - 1}"
+            / "load_weather.parquet"
+        )
+        if prev_path.exists():
+            df_prev = pd.read_parquet(prev_path)
+            cutoff = df_prev["datetime"].max() - pd.Timedelta(hours=168)
+            df_context = df_prev[df_prev["datetime"] > cutoff]
+            df_year = pd.concat([df_context, df_year], ignore_index=True)
+
+        dfs.append(df_year)
 
     if not dfs:
         raise ValueError("No preprocessed data found for the given years")
