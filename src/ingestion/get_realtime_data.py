@@ -23,6 +23,7 @@ Usage:
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import os
+import time
 import requests
 import pandas as pd
 import xml.etree.ElementTree as ET
@@ -87,7 +88,17 @@ def fetch_entsoe_realtime(
         "securityToken": api_token,
     }
 
-    response = requests.get(ENTSOE_BASE_URL, params=params, timeout=30)
+    # ENTSO-E can be slow or have transient issues, so we implement a retry mechanism
+    for attempt in range(3):
+        try:
+            response = requests.get(ENTSOE_BASE_URL, params=params, timeout=60)
+            break
+        except requests.exceptions.ReadTimeout:
+            if attempt == 2:
+                raise
+            print(f"[ENTSOE] Timeout on attempt {attempt + 1}/3, retrying in {10 * (attempt + 1)}s...")
+            time.sleep(10 * (attempt + 1))
+
     response.raise_for_status()
 
     root = ET.fromstring(response.content)
