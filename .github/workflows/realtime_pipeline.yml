@@ -5,6 +5,10 @@ on:
     - cron: "0 * * * *" # every hour
   workflow_dispatch: # manual trigger
 
+concurrency:
+  group: realtime-pipeline
+  cancel-in-progress: true # if a new run is triggered while another is still running, cancel the previous one
+
 jobs:
   run-realtime-pipeline:
     runs-on: ubuntu-latest
